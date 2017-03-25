@@ -55,4 +55,23 @@ app.use(bodyParser.json({ type: 'application/json' }));
 //     //
 // }
 
+app.set('port', process.env.PORT || 3000);
+
+var theImage = null;
+
+app.get('/', function (req, res) {
+    console.log('GET received');
+
+    res.send(theImage)
+});
+
+app.post('/upload', function (req, res) {
+    console.log("POST received");
+    console.log("---Request Body: '" + JSON.stringify(req.body) + "'");
+
+    res.send(JSON.stringify(req.body));
+});
+
+app.listen(app.get('port'));
+
 module.exports = app;
