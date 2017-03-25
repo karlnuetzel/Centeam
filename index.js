@@ -16,12 +16,11 @@ var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 var schema = new mongoose.Schema({
-    gameId: String,
-    isJudge: Boolean,
-    playerId: String,
-    imageId: String,
+    gameID: String,
+    roundID: String,
+    playerID: String,
+    imageID: String,
     imageData: String,
-    matches: Number,
     tagsArray: [],
     colorsArray: []
 });
@@ -35,8 +34,8 @@ app.set('port', process.env.PORT || 3000);
 var gameStarted = true;
 var gameSize;
 var usersJudged = 0;
+var judge = 0;
 var players;
-var round;
 
 app.post('/initializeGame', function (req, red) {
     console.log("POST /initializeGame received.");
@@ -85,12 +84,13 @@ app.post('/uploadPicture', function (req, res) {
 
                         });
                         console.log(colors);
+
                         var modelInstance = new model({
-                            isJudge: req.body.isJudge,
-                            playerId: req.body.sourceId,
-                            imageId: req.body.imageId,
+                            gameID: req.body.gameID,
+                            roundID: req.body.roundID,
+                            playerId: req.body.playerID,
+                            imageId: req.body.imageID,
                             imageData: req.body.imageData,
-                            matches: Number,
                             tagsArray: tags,
                             colorsArray: colors
                         });
@@ -104,13 +104,13 @@ app.post('/uploadPicture', function (req, res) {
                         fs.unlinkSync(filename);
                         res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
                         console.log("/uploadPicture complete.");
-                        if (gameSize == usersJudged){
+                        if (gameSize == usersJudged) {
 
                             determineWinner();
 
                         }
-                    });
-                //
+
+                    })
             });
         //
     } else {
@@ -118,19 +118,25 @@ app.post('/uploadPicture', function (req, res) {
     }
 });
 
-function determineWinner() {
+function determineWinner(roundNumber) {
 
-}
-
-app.post('/determineWinner', function (req, res) {
     if (gameStarted) {
-        for (var i = 0; i < gameSize; i++) {
+        model.find({round: roundNumber}, function (items) {
 
-        }
+            var greatest = 0;
+            items.forEach((item) => {
+
+                if (item.matches > greatest) {
+                    var id = item.playerId;
+                    greatest = item.matches;
+                }
+            });
+        });
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
     }
-});
+    return id;
+}
 
 function compareUsers(imgTags1, imgTags2) {
 
@@ -147,6 +153,7 @@ function compareUsers(imgTags1, imgTags2) {
 
         });
     });
+    return amountOfMatches;
 }
 
 app.listen(app.get('port'));
