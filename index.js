@@ -12,15 +12,15 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 var Schema = mongoose.Schema;
 
 var SomeModelSchema = new Schema({
-    picString : String,
-    gameID : String
+    picString: String,
+    gameID: String
 });
 
-var SomeModel = mongoose.model('SomeModel', SomeModelSchema );
+var SomeModel = mongoose.model('SomeModel', SomeModelSchema);
 
-var awesome_instance = new SomeModel({ gameID : 'fjk3l2rl'});
+var awesome_instance = new SomeModel({gameID: 'fjk3l2rl'});
 
-awesome_instance.save(function(err){
+awesome_instance.save(function (err) {
     if (err) return handleError(err);
 });
 
@@ -29,8 +29,7 @@ awesome_instance.save(function(err){
 // var db = mongoose.connection;
 
 var app = express();
-app.use(bodyParser.json({ type: 'application/json' }));
-
+app.use(bodyParser.json({limit: '50mb'}));
 
 
 // var photoRouter = express.Router();
@@ -67,9 +66,9 @@ app.get('/', function (req, res) {
 
 app.post('/upload', function (req, res) {
     console.log("POST received");
-    console.log("---Request Body: '" + JSON.stringify(req.body) + "'");
+    console.log(req.body);
 
-    res.send(JSON.stringify(req.body));
+    res.send(req.body);
 });
 
 app.listen(app.get('port'));
