@@ -18,12 +18,14 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 var schema = new mongoose.Schema({
     gameId: String,
     isJudge: Boolean,
-    sourceId: String,
+    playerId: String,
     imageId: String,
     imageData: String,
+    matches: Number,
     tagsArray: [],
     colorsArray: []
 });
+
 var model = mongoose.model(collectionName, schema);
 
 var app = express();
@@ -32,6 +34,7 @@ app.set('port', process.env.PORT || 3000);
 
 var gameStarted = true;
 var gameSize;
+var usersJudged = 0;
 var players;
 var round;
 var gameId;
@@ -64,6 +67,7 @@ app.post('/join', function (req, res) {
 app.post('/uploadPicture', function (req, res) {
     if (gameStarted) {
         console.log("POST /uploadPicture received.");
+        usersJudged++;
 
         var base64Data = req.body.imageData.replace(/^data:image\/jpeg;base64,/, "");
 
@@ -96,9 +100,10 @@ app.post('/uploadPicture', function (req, res) {
                         console.log(colors);
                         var modelInstance = new model({
                             isJudge: req.body.isJudge,
-                            sourceId: req.body.sourceId,
+                            playerId: req.body.sourceId,
                             imageId: req.body.imageId,
                             imageData: req.body.imageData,
+                            matches: Number,
                             tagsArray: tags,
                             colorsArray: colors
                         });
@@ -110,9 +115,13 @@ app.post('/uploadPicture', function (req, res) {
                         });
 
                         fs.unlinkSync(filename);
-
                         res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
                         console.log("/uploadPicture complete.");
+                        if (gameSize == usersJudged){
+
+                            determineWinner();
+
+                        }
                     });
                 //
             });
@@ -121,10 +130,6 @@ app.post('/uploadPicture', function (req, res) {
         console.error("{ERROR} - Attempted to upload a picture to a game which has not started!");
     }
 });
-
-function everyoneSubmitted() {
-
-}
 
 function determineWinner() {
 
@@ -140,8 +145,7 @@ app.post('/determineWinner', function (req, res) {
     }
 });
 
-
-function compareImages(imgTags1, imgTags2) {
+function compareUsers(imgTags1, imgTags2) {
 
     var amountOfMatches = 0;
     imgTags1.forEach((imgTag1) => {
