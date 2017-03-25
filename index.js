@@ -17,11 +17,11 @@ var schema = new mongoose.Schema({
 var model = mongoose.model(collectionName, schema);
 
 var app = express();
+app.use(bodyParser.json({limit: '50mb'}));
+app.set('port', process.env.PORT || 3000);
 
 app.post('/uploadPicture', function (req, res) {
     console.log("POST /uploadPicture received.");
-
-    console.log("REQ BODY: " + req.body);
 
     var modelInstance = new model({
         isJudge: req.body.isJudge,
@@ -56,8 +56,6 @@ app.post('/callGoogle', function (req, res) {
     });
 });
 
-app.use(bodyParser.json({limit: '50mb'}));
-app.set('port', process.env.PORT || 3000);
 app.listen(app.get('port'));
 console.log("Listening on port " + app.get('port') + "...");
 
