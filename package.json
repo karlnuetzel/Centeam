@@ -1,0 +1,26 @@
+{
+  "name": "perfectpicturebackend",
+  "version": "1.0.0",
+  "description": "API to take care of backend of PerfectPicture game.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "picture",
+    "perfect",
+    "photo",
+    "google",
+    "api",
+    "game",
+    "backend",
+    "compare",
+    "image",
+    "recognition"
+  ],
+  "author": "Justin Reusnow, Brandon Faulkner, Alex Nuetzel, Kyle Hopfer",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.2"
+  }
+}
