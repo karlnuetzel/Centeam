@@ -16,6 +16,7 @@ var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 var schema = new mongoose.Schema({
+    gameId: String,
     isJudge: Boolean,
     sourceId: String,
     imageId: String,
@@ -31,13 +32,20 @@ app.set('port', process.env.PORT || 3000);
 
 var gameStarted = true;
 var gameSize;
+var players;
+var round;
 
 app.post('/initializeGame', function (req, red) {
     console.log("POST /initializeGame received.");
 
-    var gameSize = req.body.gameSize;
+    gameSize = req.body.gameSize;
+    round = 1;
 
     gameStarted = true;
+});
+
+app.post('', function (req, res) {
+
 });
 
 app.post('/uploadPicture', function (req, res) {
@@ -111,7 +119,9 @@ function determineWinner() {
 
 app.post('/determineWinner', function (req, res) {
     if (gameStarted) {
+        for (var i = 0; i < gameSize; i++) {
 
+        }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
     }
