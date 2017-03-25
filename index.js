@@ -34,6 +34,8 @@ var gameStarted = true;
 var gameSize;
 var players;
 var round;
+var gameId;
+var password;
 
 app.post('/initializeGame', function (req, red) {
     console.log("POST /initializeGame received.");
@@ -44,7 +46,18 @@ app.post('/initializeGame', function (req, red) {
     gameStarted = true;
 });
 
-app.post('', function (req, res) {
+app.post('/join', function (req, res) {
+    let data = req.body;
+    if (data.gameId == gameId && data.password == password){
+        if (players.length < 4){
+            players.push(data.username);
+            res.status(200).send();
+        } else {
+            res.status(400).send("Too many players. Try next game!");
+        }
+    } else {
+        res.status(400).send("Incorrect credentials.")
+    }
 
 });
 
