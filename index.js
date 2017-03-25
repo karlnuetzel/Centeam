@@ -17,7 +17,8 @@ var schema = new mongoose.Schema({
     sourceId: String,
     imageId: String,
     imageData: String,
-    tagsArray: []
+    tagsArray: [],
+    colorsArray: []
 });
 var model = mongoose.model(collectionName, schema);
 
@@ -30,12 +31,15 @@ app.post('/uploadPicture', function (req, res) {
 
     var base64Data = req.body.imageData.replace(/^data:image\/jpeg;base64,/, "");
 
-    require("fs").writeFile("out.png", base64Data, 'base64', function (err) {
+    var filename = "out.png";
+
+    require("fs").writeFile(filename, base64Data, 'base64', function (err) {
         //console.log(err);
     });
 
     var tags = [];
-    vision.detectLabels("out.png")
+    var colors = [];
+    vision.detectLabels(filename)
         .then((results) => {
             const labels = results[0];
             labels.forEach((label) => {
@@ -43,27 +47,58 @@ app.post('/uploadPicture', function (req, res) {
                 tags.push(label);
 
             });
-            var modelInstance = new model({
-                isJudge: req.body.isJudge,
-                sourceId: req.body.sourceId,
-                imageId: req.body.imageId,
-                imageData: req.body.imageData,
-                tagsArray: tags
-            });
+            console.log(tags);
+            vision.detectProperties(filename)
+                .then((results) => {
+                    const properties = results[0];
 
-            modelInstance.save(function (err) {
-                if (err) {
-                    return handleError(err);
-                }
-            });
-            res.send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
-            var fs = require('fs');
-            fs.unlinkSync("out.png");
+                    console.log('Colors:');
+                    properties.colors.forEach((color) => {
+
+                        colors.push(color);
+
+                    });
+                    console.log(colors);
+                    var modelInstance = new model({
+                        isJudge: req.body.isJudge,
+                        sourceId: req.body.sourceId,
+                        imageId: req.body.imageId,
+                        imageData: req.body.imageData,
+                        tagsArray: tags,
+                        colorsArray: colors
+                    });
+
+                    modelInstance.save(function (err) {
+                        if (err) {
+                            return handleError(err);
+                        }
+                    });
+                    res.send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
+                    var fs = require('fs');
+                    fs.unlinkSync(filename);
+                });
+            //
         });
     //
 });
 
+function compareImages(imgTags1, imgTags2){
+
+    var amountOfMatches = 0;
+    imgTags1.forEach((imgTag1) => {
+
+        imgTags2.forEach((imgTag2) => {
+
+            if (imgTag1 == imgTag2){
+
+                amountOfMatches++;
+
+            }
+
+        });
+    });
+}
+
 app.listen(app.get('port'));
 console.log("Listening on port " + app.get('port') + "...");
-
 module.exports = app;
