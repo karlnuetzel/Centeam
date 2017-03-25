@@ -22,6 +22,7 @@
   "author": "Justin Reusnow, Brandon Faulkner, Alex Nuetzel, Kyle Hopfer",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/vision": "^0.10.0",
     "body-parser": "^1.17.1",
     "cors": "^2.8.1",
     "express": "^4.15.2",
