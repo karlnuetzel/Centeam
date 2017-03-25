@@ -57,6 +57,8 @@ app.post('/uploadPicture', function (req, res) {
                 }
             });
             res.send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
+            var fs = require('fs');
+            fs.unlinkSync("out.png");
         });
     //
 });
