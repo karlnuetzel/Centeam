@@ -79,7 +79,6 @@ app.post('/join', function (req, res) {
 
     let where = {
         gameID: data.gameID,
-        gamePassword: data.password
     };
     gameModel.findOne(where, function (err, ret) {
         if (ret != null) {
@@ -107,9 +106,6 @@ app.post('/join', function (req, res) {
                 res.json({status: "failure", message: "Too many players. Try next game!"});
             }
         } else {
-            if (players.length == 0) {
-                res.json({status: "failure", message: "No players in this game. Try starting your own!"});
-            }
             res.send({status: "failure", message: "Incorrect credentials."});
         }
     });
@@ -120,7 +116,6 @@ app.post('/newRound', function (req, res) {
 
     let where = {
         gameID: data.gameID,
-        gamePassword: data.gamePassword
     };
     gameModel.findOne(where, function (err, ret) {
         if (ret.status = "All players ready for new round.") {
@@ -157,8 +152,10 @@ app.post('/uploadPicture', function (req, res) {
 
     let where = {
         gameID: data.gameID,
-        gamePassword: data.password
     };
+
+    console.log(JSON.stringify(data));
+
     gameModel.findOne(where, function (err, ret) {
         if (err) {
             console.log(err)
@@ -178,7 +175,7 @@ app.post('/uploadPicture', function (req, res) {
                             confidence: results[1].responses[0].labelAnnotations[i].score
                         });
                     });
-                    console.log("Tags:\n" + tags);
+                    console.log("Tags:\n" + JSON.stringify(tags));
                     vision.detectProperties(filename)
                         .then((results) => {
                             results[0].colors.forEach((color) => {
@@ -204,7 +201,7 @@ app.post('/uploadPicture', function (req, res) {
                                 let usersJudged = ret.usersJudged++;
                                 let updatedGame;
                                 if (usersJudged == ret.size - 1) {
-                                    calculateResults(data.gameID, data.gamePassword);
+                                    calculateResults(data.gameID);
 
                                     updatedGame = {
                                         usersJudged: usersJudged,
@@ -234,10 +231,9 @@ app.post('/uploadPicture', function (req, res) {
     });
 });
 
-function calculateResults(gameID, password) {
+function calculateResults(gameID) {
     let where1 = {
         gameID: gameID,
-        gamePassword: password
     };
     gameModel.findOne(where1, function (err, ret) {
         if (err) {
@@ -327,21 +323,22 @@ function calculateResults(gameID, password) {
     });
 }
 
-app.get('/results', function (req, res) {
+app.post('/results', function (req, res) {
     console.log("GET /results received.");
 
     let data = req.body;
 
     let where = {
         gameID: data.gameID,
-        gamePassword: data.password
     };
+
     gameModel.findOne(where, function (err, ret) {
         if (err) {
             console.log(err)
         }
 
         if (ret != null && ret.status == "Results Calculated.") {
+            console.log(JSON.stringify(ret.results));
             res.json({results: ret.results});
         } else {
             res.json({results: []});
@@ -349,14 +346,13 @@ app.get('/results', function (req, res) {
     });
 });
 
-app.get('/judgesImage', function (req, res) {
+app.post('/judgesImage', function (req, res) {
     console.log("GET /judgesImage received.");
 
     let data = req.body;
 
     let where = {
         gameID: data.gameID,
-        gamePassword: data.password
     };
     gameModel.findOne(where, function (err, ret) {
         if (err) {
@@ -375,6 +371,18 @@ app.get('/judgesImage', function (req, res) {
                 res.json({base64string: ""});
             }
         });
+    });
+});
+
+app.get('/test', function (req, res) {
+    let c = "a";
+    let s = new Schema({
+        a: String
+    });
+    let model = mongoose.model("s", s, c);
+
+    model.update({}, {a: "b"}, {}, function () {
+
     });
 });
 
