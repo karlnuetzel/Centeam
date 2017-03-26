@@ -11,284 +11,370 @@ mongoose.Promise = q.Promise;
 
 let mongoDB = 'mongodb://127.0.0.1:27017/local';
 mongoose.connect(mongoDB);
-let collectionName = "perfectpictures";
 let db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
-var Schema = mongoose.Schema;
-let schema = new Schema({
+let Schema = mongoose.Schema;
+
+let imageCollectionName = "perfectpictureimages";
+let imageSchema = new Schema({
     gameID: String,
-    roundID: String,
-    playerID: String,
+    round: String,
+    username: String,
     imageID: String,
     imageData: String,
     tagsArray: [],
-    confidenceArray: [],
     colorsArray: []
 });
+let imageModel = mongoose.model("imageSchema", imageSchema, imageCollectionName);
 
-let model = mongoose.model("schema", schema, collectionName);
+let gameCollectionName = "perfectpicturegames";
+let gameSchema = new Schema({
+    status: String,
+    gameID: String,
+    gamePassword: String,
+    round: Number,
+    players: [],
+    size: Number,
+    currentJudge: String,
+    usersJudged: Number,
+    results: [],
+});
+let gameModel = mongoose.model("gameSchema", gameSchema, gameCollectionName);
 
 let app = express();
 app.use(bodyParser.json({limit: '50mb'}));
 app.set('port', process.env.PORT || 3000);
 
-let gameStarted;
-let gameSize;
-let usersJudged = 0;
-let players = [];
-let round;
-let gameID;
-let password;
-let roundFinished = false;
-let totalScore = [];
-let judgeID;
-let results = [];
-
 app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
-    gameStarted = true;
-    gameSize = 0;
-    usersJudged = 0;
     let data = req.body;
-    password = data.password;
-    gameID = data.gameID;
-    players.push(data.username);
-    round = 1;
-    judgeID = 0;
 
-    res.send({});
+    let gameModelInstance = new gameModel({
+        status: "Game Initialized",
+        gameID: data.gameID,
+        gamePassword: data.password,
+        round: 0,
+        players: [data.username],
+        size: 1,
+        currentJudge: data.username,
+        usersJudged: 0,
+        results: [],
+    });
+
+    gameModelInstance.save(function (err) {
+        if (err) {
+            console.log(err);
+        }
+
+        res.send({});
+    });
 });
 
 app.post('/join', function (req, res) {
     console.log("POST /join received.");
 
     let data = req.body;
-    if (data.gameID == gameID && data.password == password) {
-        if (players.length < 4) {
-            players.push(data.username);
-            totalScore.push(0);
-            res.json({status: "success", message: ""});
-        } else {
-            res.json({status: "failure", message: "Too many players. Try next game!"});
-        }
-    } else {
-        if (players.length == 0) {
-            res.json({status: "failure", message: "No players in this game. Try starting your own!"});
-        }
-        res.send({status: "failure", message: "Incorrect credentials."});
-    }
 
+    let where = {
+        gameID: data.gameID,
+        gamePassword: data.password
+    };
+    gameModel.findOne(where, function (err, ret) {
+        if (ret != null) {
+            if (ret.players.length < 4) {
+                let players = ret.players;
+                players.push(data.username);
+
+                let size = ret.size;
+                size++;
+
+                let updatedGame = {
+                    status: "Player \"" + data.username + "\" joining",
+                    players: players,
+                    size: size,
+                };
+
+                gameModel.update(where, updatedGame, {}, function (err, n) {
+                    if (err) {
+                        console.log(err);
+                    }
+
+                    res.json({status: "success", message: ""});
+                });
+            } else {
+                res.json({status: "failure", message: "Too many players. Try next game!"});
+            }
+        } else {
+            if (players.length == 0) {
+                res.json({status: "failure", message: "No players in this game. Try starting your own!"});
+            }
+            res.send({status: "failure", message: "Incorrect credentials."});
+        }
+    });
 });
 
 app.post('/newRound', function (req, res) {
     console.log("POST /newRound received.");
 
-    // if (unassigned) {
-    round++;
+    let where = {
+        gameID: data.gameID,
+        gamePassword: data.gamePassword
+    };
+    gameModel.findOne(where, function (err, ret) {
+        if (ret.status = "All players ready for new round.") {
+            let round = ret.round;
+            round++;
 
-    results.forEach((result) => {
-        if (result.placement == 0) {
-            judgeID = result.playerID;
+            let judge = ret.currentJudge;
+            ret.results[ret.round].forEach(function (roundResult) {
+                if (roundResult.placement == 0) {
+                    judge = roundResult.username;
+                }
+            });
+
+            let updatedGame = {
+                status: "Starting round " + round,
+                round: round,
+                currentJudge: judge,
+                usersJudged: 0
+            };
+
+            gameModel.update(where, updatedGame, {}, function (err, n) {
+                res.send({status: "success", message: "Next round started."});
+            });
+        } else {
+            res.send({status: "standby", message: "Can't start next round until all users are ready."})
         }
     });
-    // }
 });
 
 app.post('/uploadPicture', function (req, res) {
     console.log("POST /uploadPicture received.");
-    if (gameStarted) {
-        let base64Data = req.body.imageData.replace(/^data:image\/jpeg;base64,/, "");
+
+    let data = req.body;
+
+    let where = {
+        gameID: data.gameID,
+        gamePassword: data.password
+    };
+    gameModel.findOne(where, function (err, ret) {
+        if (err) {
+            console.log(err)
+        }
+
+        let base64Data = data.imageData.replace(/^data:image\/jpeg;base64,/, "");
         let filename = "out.png";
-        fs.writeFile("out.png", base64Data, 'base64', function (err) {
-        });
+        fs.writeFile(filename, base64Data, 'base64', function (err) {
+            let tags = [];
+            let colors = [];
 
-        let tags = [];
-        let confidence = [];
-        let colors = [];
-        vision.detectLabels(filename)
-            .then((results) => {
-                const labels = results[0];
-                var count = 0;
-                labels.forEach((label) => {
-                    tags.push(label);
-                    confidence.push(results[1].responses[0].labelAnnotations[count++].score);
-                });
-                console.log(tags);
-                console.log(confidence);
-                vision.detectProperties(filename)
-                    .then((results) => {
-                        const properties = results[0];
-
-                        console.log('Colors:');
-                        properties.colors.forEach((color) => {
-
-                            colors.push(color);
-
-                        });
-                        console.log(colors);
-
-                        let playerID = -1;
-                        players.forEach((player, i) => {
-                            if (player == req.body.username) {
-                                playerID = i;
-                            }
-                        });
-
-                        let modelInstance = new model({
-                            gameID: req.body.gameID,
-                            roundID: req.body.roundID,
-                            playerID: playerID,
-                            imageID: req.body.imageID,
-                            imageData: req.body.imageData,
-                            tagsArray: tags,
-                            confidenceArray: confidence,
-                            colorsArray: colors
-                        });
-
-                        modelInstance.save(function (err) {
-                            if (err) {
-                                console.log(err);
-                            }
-
-                            usersJudged++;
-                            if (usersJudged == gameSize) {
-                                roundFinished = true;
-                                calculateResults();
-                            }
-
-                            res.send("Image with id \"" + req.body.imageID + "\" from user with id \"" + req.body.playerID + "\" saved to Mongo.");
-                            console.log("/uploadPicture complete.");
-
-                            let fs = require('fs');
-                            fs.unlinkSync(filename);
+            vision.detectLabels(filename)
+                .then((results) => {
+                    results[0].forEach((tag, i) => {
+                        tags.push({
+                            tag: tag,
+                            confidence: results[1].responses[0].labelAnnotations[i].score
                         });
                     });
-            });
-    } else {
-        console.error("{ERROR} - Attempted to upload a picture to a game which has not started!");
-    }
+                    console.log("Tags:\n" + tags);
+                    vision.detectProperties(filename)
+                        .then((results) => {
+                            results[0].colors.forEach((color) => {
+                                colors.push(color);
+                            });
+                            console.log("Colors:\n" + colors);
+
+                            let imageModelInstance = new imageModel({
+                                gameID: data.gameID,
+                                round: data.round,
+                                username: data.username,
+                                imageID: data.imageID,
+                                imageData: data.imageData,
+                                tagsArray: tags,
+                                colorsArray: colors
+                            });
+
+                            imageModelInstance.save(function (err) {
+                                if (err) {
+                                    console.log(err);
+                                }
+
+                                let usersJudged = ret.usersJudged++;
+                                let updatedGame;
+                                if (usersJudged == ret.size - 1) {
+                                    calculateResults(data.gameID, data.gamePassword);
+
+                                    updatedGame = {
+                                        usersJudged: usersJudged,
+                                        status: "All players ready for new round.",
+                                    }
+                                } else {
+                                    updatedGame = {
+                                        usersJudged: usersJudged,
+                                        status: "" + usersJudged + " players ready for new round."
+                                    }
+                                }
+
+                                gameModel.update(where, updatedGame, {}, function (err, n) {
+                                    if (err) {
+                                        console.log(err);
+                                    }
+
+                                    res.send({status: "success", message: "Image with id \"" + data.imageID + "\" from user with id \"" + data.playerID + "\" saved to Mongo."});
+                                    console.log("/uploadPicture complete.");
+
+                                    fs.unlinkSync(filename);
+                                });
+                            });
+                        });
+                });
+        });
+    });
 });
 
-function calculateResults() {
-    console.log("CALCULATING RESULTS FOR ROUND " + round);
-    console.log(round);
-    console.log(gameID);
-    console.log(judgeID);
-    model.find({round: round, gameID: gameID, playerID: judgeID}, function (item) {
-        var judgesTags = item.tagsArray;
+function calculateResults(gameID, password) {
+    let where1 = {
+        gameID: gameID,
+        gamePassword: password
+    };
+    gameModel.findOne(where1, function (err, ret) {
+        if (err) {
+            console.log(err)
+        }
 
-        model.find({round: round, gameID: gameID}, function (items) {
-            items.forEach(function (item) {
-                if (item.playerID !== judgeID) {
-                    var result = {
-                        playerID: "",
+        let results = ret.results;
+
+        let where2 = {
+            gameID: ret.gameID,
+            round: ret.round,
+            username: ret.currentJudge
+        };
+        imageModel.findOne(where2, function (err, judge) {
+            let where3 = {
+                gameID: ret.gameID,
+                round: ret.round
+            };
+            imageModel.find(where3, function (err, players) {
+                players.forEach(function (player) {
+                    let result = {
                         username: "",
-                        round: round,
+                        round: ret.round,
                         score: 0,
-                        matches: 0,
-                        totalScore: totalScore[item.playerID],
-                        placement: ""
+                        totalScore: 0,
+                        placement: 4
                     };
 
-                    judgesTags.forEach(function (judgeTag) {
-                        item.tagsArray.forEach(function (playerTag, i) {
-                            if (playerTag == judgeTag) {
-                                result.matches += item.confidenceArray[i];
+                    if (player.username != judge.username) {
+                        judge.tagsArray.forEach(function (judgeTag) {
+                            player.tagsArray.forEach(function (playerTag, i) {
+                                if (playerTag.tag == judgeTag.tag) {
+                                    result.score += 25 * player.tagsArray[i].confidence;
+                                }
+                            });
+                        });
+                    } else {
+                        result.totalScore = ret.round != 0 ? ret.results[ret.round - 1] : 0;
+                        result.placement = -1;
+                    }
+
+                    if (ret.round != 0) {
+                        ret.results[ret.round - 1].forEach(function (previousRoundResult, i) {
+                            if (previousRoundResult.username == player.username) {
+                                result.totalScore = ret.results[ret.round - 1][i] + result.score;
                             }
                         });
-                    });
+                    } else {
+                        result.totalScore = result.score;
+                    }
 
-                    result.score = result.matches * 25;
-                    result.totalScore += result.score;
-                } else {
-                    var result = {
-                        playerID: "",
-                        username: "",
-                        round: round,
-                        score: 0,
-                        matches: 0,
-                        totalScore: totalScore[item.playerID],
-                        placement: -1
+                    result.username = player.username;
+                    results.push(result);
+                });
+
+                let swapped = true;
+                while (swapped) {
+                    swapped = false;
+                    for (let i = 1; i < results[ret.round].length; i++) {
+                        if (results[ret.round][i].score < results[ret.round][i - 1].score) {
+                            let tmp = results[ret.round][i];
+                            results[ret.round][i] = results[ret.round][i - 1];
+                            results[ret.round][i - 1] = tmp;
+                            swapped = true;
+                        }
                     }
                 }
 
-                result.playerID = item.playerID;
-                result.username = players[item.playerID];
+                results[ret.round].forEach((result, i) => {
+                    result.placement = i;
+                });
 
-                results.push(result);
-            });
+                let updatedGame = {
+                    results: results,
+                    status: "Results Calculated."
+                };
 
-            var swapped = true;
-            while (swapped) {
-                swapped = false;
-                for (let i = 1; i < results.length; i++) {
-                    if (results[i].score < results[i - 1].score) {
-                        var tmp = results[i];
-                        results[i] = results[i - 1];
-                        results[i - 1] = tmp;
-                        swapped = true;
+                gameModel.update(where1, updatedGame, {}, function (err, n) {
+                    if (err) {
+                        console.log(err);
                     }
-                }
-            }
 
-            results.forEach((result, i) => {
-                result.placement = i;
+                    //Otherwise the data is saved in mongo successfully and this marks the end of the function.
+                });
             });
-        });
+        })
     });
 }
 
 app.get('/results', function (req, res) {
     console.log("GET /results received.");
 
-    if (gameStarted) {
-        let where =
-            {
-                round: round,
-                gameID: gameID
-            };
+    let data = req.body;
 
-        model.find(where, function (items) {
-            if (items != null) {
-                let c = 0;
-                items.forEach((a) => {
-                    c++;
-                });
+    let where = {
+        gameID: data.gameID,
+        gamePassword: data.password
+    };
+    gameModel.findOne(where, function (err, ret) {
+        if (err) {
+            console.log(err)
+        }
 
-                if (c == players.size()) {
-                    res.json({results: results});
-                } else {
-                    res.json({results: []});
-                }
-            } else {
-                //u suck
-            }
-        });
-    } else {
-        console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
-        res.status(500).send();
-    }
+        if (ret != null && ret.status == "Results Calculated.") {
+            res.json({results: ret.results});
+        } else {
+            res.json({results: []});
+        }
+    });
 });
 
 app.get('/judgesImage', function (req, res) {
-    console.log("playerID: " + judgeID + "\nround: " + round + "\ngameID: " + gameID);
-    let where =
-        {
-            'playerID': judgeID,
-            'round': round,
-            'gameID': gameID
-        };
+    console.log("GET /judgesImage received.");
 
-    model.findOne(where, function (err, judgeData) {
-        if (judgeData != null) {
-            console.log("hello");
-            res.json({base64string: judgeData.base64string});
-        } else {
-            console.log("UH_OH. " + err);
-            res.json({base64string: ""});
+    let data = req.body;
+
+    let where = {
+        gameID: data.gameID,
+        gamePassword: data.password
+    };
+    gameModel.findOne(where, function (err, ret) {
+        if (err) {
+            console.log(err)
         }
+
+        let where = {
+            username: data.currentJudge,
+            round: data.round,
+            gameID: data.gameID
+        };
+        imageModel.findOne(where, function (err, judgeData) {
+            if (judgeData != null) {
+                res.json({base64string: judgeData.base64string});
+            } else {
+                res.json({base64string: ""});
+            }
+        });
     });
 });
 
