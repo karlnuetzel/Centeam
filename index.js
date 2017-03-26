@@ -16,12 +16,11 @@ var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 var schema = new mongoose.Schema({
-    gameId: String,
-    isJudge: Boolean,
-    playerId: String,
-    imageId: String,
+    gameID: String,
+    roundID: String,
+    playerID: String,
+    imageID: String,
     imageData: String,
-    matches: Number,
     tagsArray: [],
     colorsArray: []
 });
@@ -37,22 +36,25 @@ var gameSize;
 var usersJudged = 0;
 var players;
 var round;
-var gameId;
+var gameID;
 var password;
+var roundFinished = false;
 
-app.post('/initializeGame', function (req, red) {
+app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
-    gameSize = req.body.gameSize;
-    round = 1;
-
     gameStarted = true;
+    gameSize = 0;
+    gamneId = new Date().getTime();
+    usersJudged = 0;
+    players = [];
+    round = 1;
 });
 
 app.post('/join', function (req, res) {
     let data = req.body;
-    if (data.gameId == gameId && data.password == password){
-        if (players.length < 4){
+    if (data.gameId == gameID && data.password == password) {
+        if (players.length < 4) {
             if (players.length == 0){
                 res.status(400).send("No players in this game. Try starting your own!");
             }
@@ -101,12 +103,13 @@ app.post('/uploadPicture', function (req, res) {
 
                         });
                         console.log(colors);
+
                         var modelInstance = new model({
-                            isJudge: req.body.isJudge,
-                            playerId: req.body.sourceId,
-                            imageId: req.body.imageId,
+                            gameID: req.body.gameID,
+                            roundID: req.body.roundID,
+                            playerId: req.body.playerID,
+                            imageId: req.body.imageID,
                             imageData: req.body.imageData,
-                            matches: 0,
                             tagsArray: tags,
                             colorsArray: colors
                         });
@@ -120,49 +123,56 @@ app.post('/uploadPicture', function (req, res) {
                         fs.unlinkSync(filename);
                         res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
                         console.log("/uploadPicture complete.");
-                        if (gameSize == usersJudged){
-
-                            determineWinner();
-
+                        if (gameSize == usersJudged) {
+                            roundFinished = true;
+                            //determineWinner();
                         }
-                    });
-                //
+                    })
             });
-        //
     } else {
         console.error("{ERROR} - Attempted to upload a picture to a game which has not started!");
     }
 });
 
-function determineWinner() {
-
-}
-
-app.post('/determineWinner', function (req, res) {
+app.get('/results', function (req, res) {
     if (gameStarted) {
-        for (var i = 0; i < gameSize; i++) {
+        if (roundFinished) {
+            model.find({round: roundNumber, gameID: gameID}, function (items) {
+                var greatest = 0;
+                var greatestID = 1;
+                items.forEach((item) => {
+                    if (item.matches > greatest) {
+                        greatestID = item.playerId;
+                        greatest = item.matches;
+                    }
+                });
 
+                var results =
+                    {
+                        "Winner": greatestID
+                    };
+
+                res.send(200).send(results);
+            });
+        } else {
+            res.status(400).send("Round not finished!");
         }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
+        res.status(500).send();
     }
 });
 
 function compareUsers(imgTags1, imgTags2) {
-
     var amountOfMatches = 0;
     imgTags1.forEach((imgTag1) => {
-
         imgTags2.forEach((imgTag2) => {
-
             if (imgTag1 == imgTag2) {
-
                 amountOfMatches++;
-
             }
-
         });
     });
+    return amountOfMatches;
 }
 
 app.listen(app.get('port'));
