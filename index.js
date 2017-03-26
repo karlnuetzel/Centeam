@@ -42,40 +42,59 @@ let gameID;
 let password;
 let roundFinished = false;
 let totalScore = [];
+let judgeID;
+let results = [];
 
 app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
     gameStarted = true;
     gameSize = 0;
-    gamneId = new Date().getTime();
+    gameID = new Date().getTime();
     usersJudged = 0;
     let data = req.body;
     password = data.password;
     gameID = data.gameID;
     players.push(data.username);
     round = 1;
+    judgeID = 0;
+
+    res.status(200).send();
 });
 
-// app.post();
-
 app.post('/join', function (req, res) {
+    console.log("POST /join received.");
+
     let data = req.body;
     if (data.gameID == gameID && data.password == password) {
         if (players.length < 4) {
             players.push(data.username);
             totalScore.push(0);
-            res.status(200).json({status: "success", message: ""});
+            res.json({status: "success", message: ""});
         } else {
-            res.status(200).json({status: "failure", message: "Too many players. Try next game!"});
+            res.json({status: "failure", message: "Too many players. Try next game!"});
         }
     } else {
         if (players.length == 0) {
-            res.status(200).json({status: "failure", message: "No players in this game. Try starting your own!"});
+            res.json({status: "failure", message: "No players in this game. Try starting your own!"});
         }
-        res.status(200).send({status: "failure", message: "Incorrect credentials."});
+        res.send({status: "failure", message: "Incorrect credentials."});
     }
 
+});
+
+app.post('/newRound', function (req, res) {
+    console.log("POST /newRound received.");
+
+    // if (unassigned) {
+        round++;
+
+        results.forEach((result) => {
+            if (result.placement == 0) {
+                judgeID = result.playerID;
+            }
+        });
+    // }
 });
 
 app.post('/uploadPicture', function (req, res) {
@@ -146,23 +165,23 @@ app.post('/uploadPicture', function (req, res) {
     }
 });
 
-var results = [];
 function calculateResults() {
-    model.find({round: round, gameID: gameID, playerID: 0}, function (item) {
+    model.find({round: round, gameID: gameID, playerID: judgeID}, function (item) {
         var judgesTags = item.tagsArray;
 
         model.find({round: round, gameID: gameID}, function (items) {
             items.forEach(function (item) {
-                if (item.playerID !== 0) {
+                if (item.playerID !== judgeID) {
                     var result = {
                         playerID: "",
-                        score: "",
-                        matches: "",
+                        username: "",
+                        round: round,
+                        score: 0,
+                        matches: 0,
                         totalScore: totalScore[item.playerID],
                         placement: ""
                     };
 
-                    result.playerID = item.playerID;
                     judgesTags.forEach(function (judgeTag) {
                         item.tagsArray.forEach(function (playerTag, i) {
                             if (playerTag == judgeTag) {
@@ -173,9 +192,22 @@ function calculateResults() {
 
                     result.score = result.matches * 25;
                     result.totalScore += result.score;
-
-                    results.push(result);
+                } else {
+                    var result = {
+                        playerID: "",
+                        username: "",
+                        round: round,
+                        score: 0,
+                        matches: 0,
+                        totalScore: totalScore[item.playerID],
+                        placement: -1
+                    }
                 }
+
+                result.playerID = item.playerID;
+                result.username = players[item.playerID];
+
+                results.push(result);
             });
 
             var swapped = true;
@@ -199,11 +231,13 @@ function calculateResults() {
 }
 
 app.get('/results', function (req, res) {
+    console.log("GET /results received.");
+
     if (gameStarted) {
         if (roundFinished) {
             res.send(200).send(results);
         } else {
-            res.status(200).send({message: "Round not finished!"});
+            res.status(200).send([]);
         }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
