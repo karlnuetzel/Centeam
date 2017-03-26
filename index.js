@@ -53,6 +53,9 @@ app.post('/join', function (req, res) {
     let data = req.body;
     if (data.gameId == gameId && data.password == password){
         if (players.length < 4){
+            if (players.length == 0){
+                res.status(400).send("No players in this game. Try starting your own!");
+            }
             players.push(data.username);
             res.status(200).send();
         } else {
