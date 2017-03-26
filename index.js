@@ -50,7 +50,10 @@ app.post('/initializeGame', function (req, res) {
     gameSize = 0;
     gamneId = new Date().getTime();
     usersJudged = 0;
-    players = [];
+    let data = req.body;
+    password = data.password;
+    gameID = data.gameID;
+    players.push(data.username);
     round = 1;
 });
 
