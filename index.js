@@ -53,18 +53,18 @@ app.post('/initializeGame', function (req, res) {
 
 app.post('/join', function (req, res) {
     let data = req.body;
-    if (data.gameId == gameID && data.password == password) {
+    if (data.gameID == gameID && data.password == password) {
         if (players.length < 4) {
-            if (players.length == 0){
-                res.status(400).send("No players in this game. Try starting your own!");
-            }
             players.push(data.username);
-            res.status(200).send();
+            res.status(200).json({status:"success", message:""});
         } else {
-            res.status(400).send("Too many players. Try next game!");
+            res.status(200).json({status:"failure", message:"Too many players. Try next game!"});
         }
     } else {
-        res.status(400).send("Incorrect credentials.")
+        if (players.length == 0){
+            res.status(200).json({status:"failure", message: "No players in this game. Try starting your own!"});
+        }
+        res.status(200).send({status:"failure", message: "Incorrect credentials."});
     }
 
 });
