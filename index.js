@@ -244,13 +244,13 @@ function calculateResults(gameID) {
 
         let where2 = {
             gameID: ret.gameID,
-            round: ret.round,
+            // round: ret.round,
             username: ret.currentJudge
         };
         imageModel.findOne(where2, function (err, judge) {
             let where3 = {
                 gameID: ret.gameID,
-                round: ret.round
+                // round: ret.round
             };
             imageModel.find(where3, function (err, players) {
                 console.log(players.length);
@@ -304,9 +304,13 @@ function calculateResults(gameID) {
                     }
                 }
 
-                results[ret.round].forEach((result, i) => {
-                    result.placement = i;
-                });
+                console.log(JSON.stringify(results[ret.round]));
+
+                // if (results[ret.round]) {
+                //     results[ret.round].forEach((result, i) => {
+                //         result.placement = i;
+                //     });
+                // }
 
                 let updatedGame = {
                     results: results,
@@ -368,7 +372,7 @@ app.post('/judgesImage', function (req, res) {
         };
         imageModel.findOne(where, function (err, judgeData) {
             if (judgeData != null) {
-                res.json({base64string: judgeData.base64string});
+                res.json({base64string: judgeData.imageData});
             } else {
                 res.json({base64string: ""});
             }
