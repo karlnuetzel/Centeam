@@ -253,6 +253,8 @@ function calculateResults(gameID) {
                 round: ret.round
             };
             imageModel.find(where3, function (err, players) {
+                console.log(players.length);
+
                 players.forEach(function (player) {
                     let result = {
                         username: "",
@@ -360,8 +362,8 @@ app.post('/judgesImage', function (req, res) {
         }
 
         let where = {
-            username: data.currentJudge,
-            round: data.round,
+            username: ret.currentJudge,
+            round: ret.round,
             gameID: data.gameID
         };
         imageModel.findOne(where, function (err, judgeData) {
