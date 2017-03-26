@@ -94,8 +94,8 @@ app.post('/uploadPicture', function (req, res) {
                 const labels = results[0];
                 var count = 0;
                 labels.forEach((label) => {
-                    confidence.push(results[1].responses[0].labelAnnotations[count++].score)
                     tags.push(label);
+                    confidence.push(results[1].responses[0].labelAnnotations[count++].score);
                 });
                 console.log(tags);
                 console.log(confidence);
