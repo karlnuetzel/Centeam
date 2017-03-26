@@ -34,25 +34,27 @@ app.set('port', process.env.PORT || 3000);
 var gameStarted = true;
 var gameSize;
 var usersJudged = 0;
-var judge = 0;
 var players;
 var round;
-var gameId;
+var gameID;
 var password;
+var roundFinished = false;
 
-app.post('/initializeGame', function (req, red) {
+app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
-    gameSize = req.body.gameSize;
-    round = 1;
-
     gameStarted = true;
+    gameSize = 0;
+    gamneId = new Date().getTime();
+    usersJudged = 0;
+    players = [];
+    round = 1;
 });
 
 app.post('/join', function (req, res) {
     let data = req.body;
-    if (data.gameId == gameId && data.password == password){
-        if (players.length < 4){
+    if (data.gameId == gameID && data.password == password) {
+        if (players.length < 4) {
             players.push(data.username);
             res.status(200).send();
         } else {
@@ -119,52 +121,52 @@ app.post('/uploadPicture', function (req, res) {
                         res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
                         console.log("/uploadPicture complete.");
                         if (gameSize == usersJudged) {
-
+                            roundFinished = true;
                             //determineWinner();
-
                         }
-
                     })
             });
-        //
     } else {
         console.error("{ERROR} - Attempted to upload a picture to a game which has not started!");
     }
 });
 
-function determineWinner(roundNumber) {
-
+app.get('/results', function (req, res) {
     if (gameStarted) {
-        model.find({round: roundNumber}, function (items) {
+        if (roundFinished) {
+            model.find({round: roundNumber, gameID: gameID}, function (items) {
+                var greatest = 0;
+                var greatestID = 1;
+                items.forEach((item) => {
+                    if (item.matches > greatest) {
+                        greatestID = item.playerId;
+                        greatest = item.matches;
+                    }
+                });
 
-            var greatest = 0;
-            items.forEach((item) => {
+                var results =
+                    {
+                        "Winner": greatestID
+                    };
 
-                if (item.matches > greatest) {
-                    var id = item.playerId;
-                    greatest = item.matches;
-                }
+                res.send(200).send(results);
             });
-        });
+        } else {
+            res.status(400).send("Round not finished!");
+        }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
+        res.status(500).send();
     }
-    return id;
-}
+});
 
 function compareUsers(imgTags1, imgTags2) {
-
     var amountOfMatches = 0;
     imgTags1.forEach((imgTag1) => {
-
         imgTags2.forEach((imgTag2) => {
-
             if (imgTag1 == imgTag2) {
-
                 amountOfMatches++;
-
             }
-
         });
     });
     return amountOfMatches;
