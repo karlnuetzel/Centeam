@@ -1,21 +1,22 @@
-var express = require("express");
-var bodyParser = require("body-parser");
-var mongoose = require("mongoose");
-var vision = require('@google-cloud/vision')({
+let express = require("express");
+let bodyParser = require("body-parser");
+let mongoose = require("mongoose");
+let vision = require('@google-cloud/vision')({
     projectId: 'picture-perfect-162617',
     keyFilename: 'picture perfect-571e4afd6e07.json'
 });
-var fs = require('fs');
-var q = require('q');
+let fs = require('fs');
+let q = require('q');
 mongoose.Promise = q.Promise;
 
-var mongoDB = 'mongodb://127.0.0.1:27017/local';
+let mongoDB = 'mongodb://127.0.0.1:27017/local';
 mongoose.connect(mongoDB);
-var collectionName = "perfectpicture";
-var db = mongoose.connection;
+let collectionName = "perfectpictures";
+let db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
-var schema = new mongoose.Schema({
+var Schema = mongoose.Schema;
+let schema = new Schema({
     gameID: String,
     roundID: String,
     playerID: String,
@@ -25,20 +26,20 @@ var schema = new mongoose.Schema({
     colorsArray: []
 });
 
-var model = mongoose.model(collectionName, schema);
+let model = mongoose.model("schema", schema, collectionName);
 
-var app = express();
+let app = express();
 app.use(bodyParser.json({limit: '50mb'}));
 app.set('port', process.env.PORT || 3000);
 
-var gameStarted = true;
-var gameSize;
-var usersJudged = 0;
-var players;
-var round;
-var gameID;
-var password;
-var roundFinished = false;
+let gameStarted = true;
+let gameSize;
+let usersJudged = 0;
+let players;
+let round;
+let gameID;
+let password;
+let roundFinished = false;
 
 app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
@@ -53,7 +54,7 @@ app.post('/initializeGame', function (req, res) {
 
 app.post('/join', function (req, res) {
     let data = req.body;
-    if (data.gameId == gameID && data.password == password) {
+    if (data.gameId === gameID && data.password === password) {
         if (players.length < 4) {
             if (players.length == 0){
                 res.status(400).send("No players in this game. Try starting your own!");
@@ -70,26 +71,20 @@ app.post('/join', function (req, res) {
 });
 
 app.post('/uploadPicture', function (req, res) {
+    console.log("POST /uploadPicture received.");
     if (gameStarted) {
-        console.log("POST /uploadPicture received.");
-        usersJudged++;
-
-        var base64Data = req.body.imageData.replace(/^data:image\/jpeg;base64,/, "");
-
-        var filename = "out.png";
-
+        let base64Data = req.body.imageData.replace(/^data:image\/jpeg;base64,/, "");
+        let filename = "out.png";
         fs.writeFile("out.png", base64Data, 'base64', function (err) {
         });
 
-        var tags = [];
-        var colors = [];
+        let tags = [];
+        let colors = [];
         vision.detectLabels(filename)
             .then((results) => {
                 const labels = results[0];
                 labels.forEach((label) => {
-
                     tags.push(label);
-
                 });
                 console.log(tags);
                 vision.detectProperties(filename)
@@ -104,11 +99,11 @@ app.post('/uploadPicture', function (req, res) {
                         });
                         console.log(colors);
 
-                        var modelInstance = new model({
+                        let modelInstance = new model({
                             gameID: req.body.gameID,
                             roundID: req.body.roundID,
-                            playerId: req.body.playerID,
-                            imageId: req.body.imageID,
+                            playerID: req.body.playerID,
+                            imageID: req.body.imageID,
                             imageData: req.body.imageData,
                             tagsArray: tags,
                             colorsArray: colors
@@ -118,16 +113,20 @@ app.post('/uploadPicture', function (req, res) {
                             if (err) {
                                 console.log(err);
                             }
-                        });
 
-                        fs.unlinkSync(filename);
-                        res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
-                        console.log("/uploadPicture complete.");
-                        if (gameSize == usersJudged) {
-                            roundFinished = true;
-                            //determineWinner();
-                        }
-                    })
+                            usersJudged++;
+                            if (gameSize === usersJudged) {
+                                roundFinished = true;
+                                //determineWinner();
+                            }
+
+                            res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
+                            console.log("/uploadPicture complete.");
+
+                            let fs = require('fs');
+                            fs.unlinkSync(filename);
+                        });
+                    });
             });
     } else {
         console.error("{ERROR} - Attempted to upload a picture to a game which has not started!");
@@ -138,8 +137,8 @@ app.get('/results', function (req, res) {
     if (gameStarted) {
         if (roundFinished) {
             model.find({round: roundNumber, gameID: gameID}, function (items) {
-                var greatest = 0;
-                var greatestID = 1;
+                let greatest = 0;
+                let greatestID = 1;
                 items.forEach((item) => {
                     if (item.matches > greatest) {
                         greatestID = item.playerId;
@@ -147,7 +146,7 @@ app.get('/results', function (req, res) {
                     }
                 });
 
-                var results =
+                let results =
                     {
                         "Winner": greatestID
                     };
@@ -164,10 +163,10 @@ app.get('/results', function (req, res) {
 });
 
 function compareUsers(imgTags1, imgTags2) {
-    var amountOfMatches = 0;
+    let amountOfMatches = 0;
     imgTags1.forEach((imgTag1) => {
         imgTags2.forEach((imgTag2) => {
-            if (imgTag1 == imgTag2) {
+            if (imgTag1 === imgTag2) {
                 amountOfMatches++;
             }
         });
