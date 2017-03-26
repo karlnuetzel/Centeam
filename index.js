@@ -7,7 +7,7 @@ var vision = require('@google-cloud/vision')({
 });
 var fs = require('fs');
 var q = require('q');
-mongoose.Promise = q;
+mongoose.Promise = q.Promise;
 
 var mongoDB = 'mongodb://127.0.0.1:27017/local';
 mongoose.connect(mongoDB);
@@ -106,14 +106,14 @@ app.post('/uploadPicture', function (req, res) {
                             playerId: req.body.sourceId,
                             imageId: req.body.imageId,
                             imageData: req.body.imageData,
-                            matches: Number,
+                            matches: 0,
                             tagsArray: tags,
                             colorsArray: colors
                         });
 
                         modelInstance.save(function (err) {
                             if (err) {
-                                return handleError(err);
+                                console.log(err);
                             }
                         });
 
