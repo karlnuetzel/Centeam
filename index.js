@@ -49,8 +49,7 @@ app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
     gameStarted = true;
-    gameSize = 1;
-    gameID = new Date().getTime();
+    gameSize = 0;
     usersJudged = 0;
     let data = req.body;
     password = data.password;
@@ -130,10 +129,17 @@ app.post('/uploadPicture', function (req, res) {
                         });
                         console.log(colors);
 
+                        let playerID = -1;
+                        players.forEach((player, i) => {
+                            if (player == req.body.username) {
+                                playerID = i;
+                            }
+                        });
+
                         let modelInstance = new model({
                             gameID: req.body.gameID,
                             roundID: req.body.roundID,
-                            playerID: req.body.playerID,
+                            playerID: playerID,
                             imageID: req.body.imageID,
                             imageData: req.body.imageData,
                             tagsArray: tags,
@@ -166,6 +172,10 @@ app.post('/uploadPicture', function (req, res) {
 });
 
 function calculateResults() {
+    console.log("CALCULATING RESULTS FOR ROUND " + round);
+    console.log(round);
+    console.log(gameID);
+    console.log(judgeID);
     model.find({round: round, gameID: gameID, playerID: judgeID}, function (item) {
         var judgesTags = item.tagsArray;
 
@@ -234,15 +244,52 @@ app.get('/results', function (req, res) {
     console.log("GET /results received.");
 
     if (gameStarted) {
-        if (roundFinished) {
-            res.json({results: results});
-        } else {
-            res.json({results: []});
-        }
+        let where =
+            {
+                round: round,
+                gameID: gameID
+            };
+
+        model.find(where, function (items) {
+            if (items != null) {
+                let c = 0;
+                items.forEach((a) => {
+                    c++;
+                });
+
+                if (c == players.size()) {
+                    res.json({results: results});
+                } else {
+                    res.json({results: []});
+                }
+            } else {
+                //u suck
+            }
+        });
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
         res.status(500).send();
     }
+});
+
+app.get('/judgesImage', function (req, res) {
+    console.log("playerID: " + judgeID + "\nround: " + round + "\ngameID: " + gameID);
+    let where =
+        {
+            'playerID': judgeID,
+            'round': round,
+            'gameID': gameID
+        };
+
+    model.findOne(where, function (err, judgeData) {
+        if (judgeData != null) {
+            console.log("hello");
+            res.json({base64string: judgeData.base64string});
+        } else {
+            console.log("UH_OH. " + err);
+            res.json({base64string: ""});
+        }
+    });
 });
 
 app.listen(app.get('port'));
