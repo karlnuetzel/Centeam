@@ -35,11 +35,12 @@ app.set('port', process.env.PORT || 3000);
 let gameStarted = true;
 let gameSize;
 let usersJudged = 0;
-let players;
+let players = [];
 let round;
 let gameID;
 let password;
 let roundFinished = false;
+let totalScore = [];
 
 app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
@@ -52,20 +53,23 @@ app.post('/initializeGame', function (req, res) {
     round = 1;
 });
 
+// app.post();
+
 app.post('/join', function (req, res) {
     let data = req.body;
-    if (data.gameID === gameID && data.password === password) {
+    if (data.gameID == gameID && data.password == password) {
         if (players.length < 4) {
             players.push(data.username);
-            res.status(200).json({status:"success", message:""});
+            totalScore.push(0);
+            res.status(200).json({status: "success", message: ""});
         } else {
-            res.status(200).json({status:"failure", message:"Too many players. Try next game!"});
+            res.status(200).json({status: "failure", message: "Too many players. Try next game!"});
         }
     } else {
-        if (players.length == 0){
-            res.status(200).json({status:"failure", message: "No players in this game. Try starting your own!"});
+        if (players.length == 0) {
+            res.status(200).json({status: "failure", message: "No players in this game. Try starting your own!"});
         }
-        res.status(200).send({status:"failure", message: "Incorrect credentials."});
+        res.status(200).send({status: "failure", message: "Incorrect credentials."});
     }
 
 });
@@ -115,9 +119,9 @@ app.post('/uploadPicture', function (req, res) {
                             }
 
                             usersJudged++;
-                            if (gameSize === usersJudged) {
+                            if (usersJudged == gameSize) {
                                 roundFinished = true;
-                                //determineWinner();
+                                calculateResults();
                             }
 
                             res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
@@ -133,46 +137,70 @@ app.post('/uploadPicture', function (req, res) {
     }
 });
 
+var results = [];
+function calculateResults() {
+    model.find({round: round, gameID: gameID, playerID: 0}, function (item) {
+        var judgesTags = item.tagsArray;
+
+        model.find({round: round, gameID: gameID}, function (items) {
+            items.forEach(function (item) {
+                if (item.playerID !== 0) {
+                    var result = {
+                        playerID: "",
+                        score: "",
+                        matches: "",
+                        totalScore: totalScore[item.playerID],
+                        placement: ""
+                    };
+
+                    result.playerID = item.playerID;
+                    judgesTags.forEach(function (judgeTag) {
+                        item.tagsArray.forEach(function (playerTag) {
+                            if (playerTag == judgeTag) {
+                                result.matches++;
+                            }
+                        });
+                    });
+
+                    result.score = result.matches * 25;
+                    result.totalScore += result.score;
+
+                    results.push(result);
+                }
+            });
+
+            var swapped = true;
+            while (swapped) {
+                swapped = false;
+                for (let i = 1; i < results.length; i++) {
+                    if (results[i].score < results[i - 1].score) {
+                        var tmp = results[i];
+                        results[i] = results[i - 1];
+                        results[i - 1] = tmp;
+                        swapped = true;
+                    }
+                }
+            }
+
+            results.forEach((result, i) => {
+                result.placement = i;
+            });
+        });
+    });
+}
+
 app.get('/results', function (req, res) {
     if (gameStarted) {
         if (roundFinished) {
-            model.find({round: roundNumber, gameID: gameID}, function (items) {
-                let greatest = 0;
-                let greatestID = 1;
-                items.forEach((item) => {
-                    if (item.matches > greatest) {
-                        greatestID = item.playerId;
-                        greatest = item.matches;
-                    }
-                });
-
-                let results =
-                    {
-                        "Winner": greatestID
-                    };
-
-                res.send(200).send(results);
-            });
+            res.send(200).send(results);
         } else {
-            res.status(400).send("Round not finished!");
+            res.status(200).send({message: "Round not finished!"});
         }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
         res.status(500).send();
     }
 });
-
-function compareUsers(imgTags1, imgTags2) {
-    let amountOfMatches = 0;
-    imgTags1.forEach((imgTag1) => {
-        imgTags2.forEach((imgTag2) => {
-            if (imgTag1 === imgTag2) {
-                amountOfMatches++;
-            }
-        });
-    });
-    return amountOfMatches;
-}
 
 app.listen(app.get('port'));
 console.log("Listening on port " + app.get('port') + "...");
