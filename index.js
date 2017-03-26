@@ -35,7 +35,7 @@ app.set('port', process.env.PORT || 3000);
 let gameStarted = true;
 let gameSize;
 let usersJudged = 0;
-let players;
+let players = [];
 let round;
 let gameID;
 let password;
@@ -48,7 +48,10 @@ app.post('/initializeGame', function (req, res) {
     gameSize = 0;
     gamneId = new Date().getTime();
     usersJudged = 0;
-    players = [];
+    let data = req.body;
+    password = data.password;
+    gameID = data.gameID;
+    players.push(data.username);
     round = 1;
 });
 
