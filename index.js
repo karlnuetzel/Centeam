@@ -33,7 +33,7 @@ let app = express();
 app.use(bodyParser.json({limit: '50mb'}));
 app.set('port', process.env.PORT || 3000);
 
-let gameStarted = true;
+let gameStarted;
 let gameSize;
 let usersJudged = 0;
 let players = [];
@@ -49,7 +49,7 @@ app.post('/initializeGame', function (req, res) {
     console.log("POST /initializeGame received.");
 
     gameStarted = true;
-    gameSize = 0;
+    gameSize = 1;
     gameID = new Date().getTime();
     usersJudged = 0;
     let data = req.body;
@@ -59,7 +59,7 @@ app.post('/initializeGame', function (req, res) {
     round = 1;
     judgeID = 0;
 
-    res.status(200).send();
+    res.send({});
 });
 
 app.post('/join', function (req, res) {
@@ -87,13 +87,13 @@ app.post('/newRound', function (req, res) {
     console.log("POST /newRound received.");
 
     // if (unassigned) {
-        round++;
+    round++;
 
-        results.forEach((result) => {
-            if (result.placement == 0) {
-                judgeID = result.playerID;
-            }
-        });
+    results.forEach((result) => {
+        if (result.placement == 0) {
+            judgeID = result.playerID;
+        }
+    });
     // }
 });
 
@@ -152,7 +152,7 @@ app.post('/uploadPicture', function (req, res) {
                                 calculateResults();
                             }
 
-                            res.status(200).send("Image with id \"" + req.body.imageId + "\" from user with id \"" + req.body.sourceId + "\" saved to Mongo.");
+                            res.send("Image with id \"" + req.body.imageID + "\" from user with id \"" + req.body.playerID + "\" saved to Mongo.");
                             console.log("/uploadPicture complete.");
 
                             let fs = require('fs');
@@ -235,9 +235,9 @@ app.get('/results', function (req, res) {
 
     if (gameStarted) {
         if (roundFinished) {
-            res.send(200).send(results);
+            res.json({results: results});
         } else {
-            res.status(200).send([]);
+            res.json({results: []});
         }
     } else {
         console.error("{ERROR} - Attempted to determine the winner of a game which has not started!");
