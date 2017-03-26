@@ -23,6 +23,7 @@ let schema = new Schema({
     imageID: String,
     imageData: String,
     tagsArray: [],
+    confidenceArray: [],
     colorsArray: []
 });
 
@@ -83,14 +84,18 @@ app.post('/uploadPicture', function (req, res) {
         });
 
         let tags = [];
+        let confidence = [];
         let colors = [];
         vision.detectLabels(filename)
             .then((results) => {
                 const labels = results[0];
+                var count = 0;
                 labels.forEach((label) => {
+                    confidence.push(results[1].responses[0].labelAnnotations[count++].score)
                     tags.push(label);
                 });
                 console.log(tags);
+                console.log(confidence);
                 vision.detectProperties(filename)
                     .then((results) => {
                         const properties = results[0];
@@ -110,6 +115,7 @@ app.post('/uploadPicture', function (req, res) {
                             imageID: req.body.imageID,
                             imageData: req.body.imageData,
                             tagsArray: tags,
+                            confidenceArray: confidence,
                             colorsArray: colors
                         });
 
@@ -155,9 +161,9 @@ function calculateResults() {
 
                     result.playerID = item.playerID;
                     judgesTags.forEach(function (judgeTag) {
-                        item.tagsArray.forEach(function (playerTag) {
+                        item.tagsArray.forEach(function (playerTag, i) {
                             if (playerTag == judgeTag) {
-                                result.matches++;
+                                result.matches += item.confidenceArray[i];
                             }
                         });
                     });
