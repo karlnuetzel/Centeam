@@ -219,7 +219,10 @@ app.post('/uploadPicture', function (req, res) {
                                         console.log(err);
                                     }
 
-                                    res.send({status: "success", message: "Image with id \"" + data.imageID + "\" from user with id \"" + data.playerID + "\" saved to Mongo."});
+                                    res.send({
+                                        status: "success",
+                                        message: "Image with id \"" + data.imageID + "\" from user with id \"" + data.playerID + "\" saved to Mongo."
+                                    });
                                     console.log("/uploadPicture complete.");
 
                                     fs.unlinkSync(filename);
@@ -353,7 +356,7 @@ app.post('/results', function (req, res) {
 });
 
 app.post('/judgesImage', function (req, res) {
-    console.log("GET /judgesImage received.");
+    console.log("POST /judgesImage received.");
 
     let data = req.body;
 
